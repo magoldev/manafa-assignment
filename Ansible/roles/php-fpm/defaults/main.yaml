@@ -1,0 +1,16 @@
+---
+php_version: "8.2"
+php_packages:
+  - "php{{ php_version }}-fpm"
+  - "php{{ php_version }}-cli"
+  - "php{{ php_version }}-common"
+  - "php{{ php_version }}-mysql"
+  - "php{{ php_version }}-zip"
+  - "php{{ php_version }}-gd"
+  - "php{{ php_version }}-mbstring"
+  - "php{{ php_version }}-curl"
+  - "php{{ php_version }}-xml"
+  - "php{{ php_version }}-opcache"
+  - "php{{ php_version }}-bcmath"
+  - "php{{ php_version }}-soap"
+  # Add any other PHP extensions as needed.

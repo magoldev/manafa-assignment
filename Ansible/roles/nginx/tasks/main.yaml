@@ -1,0 +1,16 @@
+---
+- name: Install the necessary software properties utility
+  apt:
+    name: software-properties-common
+    state: present
+
+- name: Install NGINX
+  apt:
+    name: nginx
+    state: present
+
+- name: Ensure NGINX is running
+  service:
+    name: nginx
+    state: started
+    enabled: yes

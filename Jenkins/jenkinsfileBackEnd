@@ -1,0 +1,122 @@
+pipeline {
+    agent any
+
+// General Variables
+    environment {
+        REMOTE_USER             = 'backend'
+        REMOTE_HOST             = 'backendHost'
+        REMOTE_PATH             = '/home/backend/'
+        DEPLOYMENT_KEY          = credentials('ssh-credential-id')
+        GIT_URL                 = "https://github.com/magoldev/laravel-nuxt-app.git"
+        GIT_BRANCH              = "backend"
+        GIT_CRED_ID             = 'git-credential-id'
+        SONARQUBE_PROJECT_NAME  = "Backend"
+
+    }
+
+    stages {
+        stage("Code Checkout from Git") {
+            steps {
+                git branch: ${env.GIT_BRANCH},
+                credentialsId: ${env.GIT_CRED_ID},
+                url: ${env.GIT_URL}
+                script {
+                    commit = sh(returnStdout: true, script: 'git log -1 --oneline').trim()
+                    commitMsg = commit.substring( commit.indexOf(' ') ).trim()
+                    commitAuthor = sh(returnStdout: true, script: "git log -1 --pretty=format:'%an'").trim()
+                }
+            }
+        }
+
+// Run SonarQube Scanner 
+
+        stage('Code Quality Check via SonarQube') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonarqube-scanner';
+                        withSonarQubeEnv("sonarqube-server") {
+                            sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${env.SONARQUBE_PROJECT_NAME}"
+                        }
+                    
+                }
+            }
+        }
+// If Quality Gate Successfully Passed The Code Then Pipleline Would Further Further Otherwise Pipleline Failed And Notification To Slack 
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 10, unit: 'MINS') {
+
+
+                // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
+                // true = set pipeline to UNSTABLE, false = don't
+                waitForQualityGate abortPipeline: true  
+                }
+            }
+        }
+
+// If Above Quality Gate Passed The Code Then Deploy To Server
+        stage('Checkout Code on Server') {
+            steps {
+                script {
+                    // Checkout code on remote server
+                    sh """
+                    ssh -i ${env.DEPLOYMENT_KEY} ${env.REMOTE_USER}@${env.REMOTE_HOST} '
+                        cd ${env.REMOTE_PATH} && git pull origin main
+                    '
+                    """
+                }
+            }
+        }
+
+// Install Dependencies
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    // Install PHP dependencies on the remote server
+                    sh """
+                    ssh -i ${env.DEPLOYMENT_KEY} ${env.REMOTE_USER}@${env.REMOTE_HOST} '
+                        cd ${env.REMOTE_PATH} && composer install
+                    '
+                    """
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                script {
+                    // Run tests on the remote server
+                    sh """
+                    ssh -i ${env.DEPLOYMENT_KEY} ${env.REMOTE_USER}@${env.REMOTE_HOST} '
+                        cd ${env.REMOTE_PATH} && php artisan test
+                    '
+                    """
+                }
+            }
+        }
+
+// Run Php Commands To Reflect Changes
+        stage('Deploy') {
+            steps {
+                script {
+                    // Run migration and other deployment tasks on the remote server
+                    sh """
+                    ssh -i ${env.DEPLOYMENT_KEY} ${env.REMOTE_USER}@${env.REMOTE_HOST} '
+                        cd ${env.REMOTE_PATH} && php artisan migrate && php artisan cache:clear && php artisan config:clear && php artisan route:clear && php artisan view:clear
+                    '
+                    """
+                }
+            }
+        }
+    }
+// Send Slack Notification About The Status Of The Pipeline And Also Added The Git Commit Message With Developer Git User Name. 
+    post {
+        success {
+            slackSend tokenCredentialId: 'slackid', color: 'good', botUser: true, username: '<SLACK_BOT_USER>', message:'Successfully deployed  ---> Commit Message: '+commitMsg+' by '+commitAuthor, channel: '<SLACK_CHANNEL>'
+        }
+        failure {
+            slackSend tokenCredentialId: 'slackid', color: 'danger', botUser: true, username: '<SLACK_BOT_USER>', message:'Deployment Failed  ---> Commit Message: '+commitMsg+' by '+commitAuthor, channel: '<SLACK_CHANNEL>'
+        }
+    }
+}

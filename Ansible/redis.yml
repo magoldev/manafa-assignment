@@ -1,0 +1,9 @@
+- name: Deploy redis
+  hosts: all
+  become: True
+  gather_facts: True
+  roles:
+    - role: redis
+ #     vars:
+ #       redis_version: "6:7.0.13-1rl1~jammy1"
+     

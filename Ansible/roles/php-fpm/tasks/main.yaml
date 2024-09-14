@@ -1,0 +1,23 @@
+---
+- name: Installation install software-properties-common
+  apt: name=software-properties-common
+
+- name: Add Ondrej PHP Repository
+  apt_repository:
+    repo='ppa:ondrej/php'
+ #   state: present
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install PHP {{ php_version }} and Extensions
+  apt:
+    name: "{{ php_packages }}"
+    state: present
+
+- name: Ensure PHP FPM service is started
+  service:
+    name: php{{ php_version }}-fpm
+    state: started
+    enabled: yes

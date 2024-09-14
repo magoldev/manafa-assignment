@@ -1,0 +1,40 @@
+---
+
+#- name: Install mysql dependencies
+#  apt:
+#    name: "{{ mysql_debian_pkgs }}"
+#    install_recommends: yes
+#    state: present
+- name: Install required packages
+  apt:
+    name:
+     - apt-transport-https
+     - software-properties-common
+     - python3-mysqldb
+    state: present
+
+- name: install  mysql-8.0
+  apt:
+     name: "{{ mysql_server_8_0_pkgs }}"
+     state: present
+     update_cache: yes
+
+
+- name: restart mysql
+  command: service mysql restart
+
+- name: Ensure Anonymous user(s) does not exist
+  mysql_user:
+    name: ''
+    host: "{{ item }}"
+    state: absent
+    login_unix_socket: "{{ mysql_socket }}"
+  with_items:
+    - localhost
+    - "{{ ansible_hostname }}"
+
+- name: Alter user root to use mysql_native_password
+  shell:
+    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password by '';"
+  become: true
+
