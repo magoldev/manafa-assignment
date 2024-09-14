@@ -1,0 +1,11 @@
+# Authentication
+tenancy_ocid         = ""
+user_ocid            = ""
+fingerprint          = ""
+private_key_path     = ""
+
+# Region
+region = "me-jeddah-1"
+
+# Compartment
+compartment_ocid = ""
