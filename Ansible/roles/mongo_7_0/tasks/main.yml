@@ -1,0 +1,81 @@
+---
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    
+- name: Install python3-pip
+  apt:
+    name: python3-pip
+    state: present
+
+- name: install python pymongo for mongo_user ansible module
+  pip:
+    name: pymongo
+    state: present
+    version: "{{ PYMONGO_VERSION }}"
+  tags:
+    - "install"
+    - "install:app-requirements"
+
+- name: add the mongodb signing key
+  apt_key:
+    url: "https://www.mongodb.org/static/pgp/server-{{ MONGO_VERSION_MAJOR_MINOR }}.asc"
+    state: present
+  retries: 3
+  register: add_mongo_signing_key
+  tags:
+    - "install"
+    - "install:app-requirements"
+  until: add_mongo_signing_key is succeeded
+
+- name: add the mongodb repo to the sources list
+  apt_repository:
+    repo: "{{ MONGODB_REPO }}"
+    state: present
+  tags:
+    - "install"
+    - "install:app-requirements"
+    - "mongo_packages"
+
+- name: install mongo server and recommends
+  apt:
+    pkg: "{{ item }}"
+    state: present
+    install_recommends: yes
+    force: yes
+    update_cache: yes
+  register: install_mongo_package
+  with_items: "{{ mongodb_debian_pkgs }}"
+  tags:
+    - "install"
+    - "install:app-requirements"
+    - "mongo_packages"
+
+- name: Ensure MongoDB is running
+  service:
+    name: mongod
+    state: started
+    enabled: yes
+  notify:
+    - restart mongo
+  
+- name: create super user
+  mongodb_user:
+    name: "{{ MONGO_ADMIN_USER }}"
+    password: "{{ MONGO_ADMIN_PASSWORD }}"
+    database: admin
+    roles: root
+  run_once: true
+  tags:
+    - "manage"
+
+
+- name: ensure mongo starts at boot time
+  service:
+    name: mongod
+    enabled: yes
+  tags:
+    - "manage"
+    - "manage:start"
+

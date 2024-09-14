@@ -1,0 +1,7 @@
+- name: Deploy MongoDB
+  hosts: all
+  become: True
+#  gather_facts: True
+  roles:
+    - role: mongo_7_0
+

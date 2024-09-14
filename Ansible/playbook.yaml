@@ -1,0 +1,10 @@
+- name: Deploy MySQL
+  hosts: all
+  become: True
+  gather_facts: True
+  roles:
+  #  - mysql_8_0
+  #  - mongo_7_0
+  #  - redis
+  #  - php8.2-fpm
+  #  - laravel-composer
